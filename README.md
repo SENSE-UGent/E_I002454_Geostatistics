@@ -3,7 +3,7 @@ Draft repo
 
 Google Colaboratory guidelines
 
-The Jupyter notebooks can be run on an IDE installed on your computer or via Google Colaboratory. In the latter case, no software or Python packages need to be installed on your machine, and you can run the entire exercise in your browser. Google Chrome is recommended as a browser, but any browser can be used. These guidelines help you set up and run the provided software in Google Colab.
+The Jupyter notebooks can be run on an IDE installed on your computer or via Google Colaboratory: https://colab.research.google.com/. In the latter case, no software or Python packages need to be installed on your machine, and you can run the entire exercise in your browser. Google Chrome is recommended as a browser, but any browser can be used. These guidelines help you set up and run the provided software in Google Colab.
 
 To use Google Colab, alongside an internet browser, you will need: a Google account: https://www.google.com/account/about; min—500 MB of storage available in Google Drive for the files that will be generated and downloaded there.
 
