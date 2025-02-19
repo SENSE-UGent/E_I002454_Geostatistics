@@ -9,7 +9,7 @@ To use Google Colab, alongside an internet browser, you will need: a Google acco
 
 You can import the notebooks required for the practicum via GitHub. After logging into your Google account, go to the ‘File’ menu and click ‘open notebook’ and select the ‘GitHub’ tab. Then copy the Geostatistics Practicum GitHub link in the URL bar.
 
-The link is: https://github.ugent.be/ORBitEDU/I002454_Geost.git
+The link is: https://github.com/pdweerdt/I002454_Geost_test.git
 
 You can then select the first notebook. After pressing the ‘open new notebook’ button (indicated in red on the screen print above), you will have imported the notebook into your Collaboratory project, which will open in a new tab. Next, save the notebook to your Google Drive [File > Save a copy in Drive]:
 
