@@ -10,13 +10,13 @@ You can import the notebooks required for the practicum via GitHub. After loggin
 
 The link is: https://github.com/SENSE-UGent/E_I002454_Geostatistics.git
 
-You can then select the first notebook. After pressing the ‘open new notebook’ button (indicated in red on the screen print above), you will have imported the notebook into your Collaboratory project, which will open in a new tab. Next, save the notebook to your Google Drive [File > Save a copy in Drive]:
+You can then select the first notebook. After pressing the ‘open new notebook’ button (indicated in red on the screen print above), you will have imported the notebook into your Colaboratory project, which will open in a new tab. Next, save the notebook to your Google Drive [File > Save a copy in Drive]:
 
 When you have taken these steps, you have a local copy of the notebook that you can run and edit.
 
 Guidelines adapted from P. De Smedt for ESS course.
 
-The notebooks mainly use the python package 'GeostatsPy':
+The notebooks mainly use the Python package 'GeostatsPy':
 Pyrcz, M.J., Jo. H., Kupenko, A., Liu, W., Gigliotti, A.E., Salomaki, T., and Santos, J., 2021, GeostatsPy Python Package: Open-source Spatial Data Analytics and Geostatistics, DOI: /doi/10.5281/zenodo.13835444.
 
 The notebooks are mainly based on the demo notebooks from:
