@@ -1,5 +1,4 @@
 # I002454_Geost
-Draft repo 
 
 Google Colaboratory guidelines
 
@@ -16,3 +15,11 @@ You can then select the first notebook. After pressing the â€˜open new notebookâ
 When you have taken these steps, you have a local copy of the notebook that you can run and edit.
 
 Guidelines adapted from P. De Smedt for ESS course.
+
+The notebooks mainly use the python package 'GeostatsPy':
+Pyrcz, M.J., Jo. H., Kupenko, A., Liu, W., Gigliotti, A.E., Salomaki, T., and Santos, J., 2021, GeostatsPy Python Package: Open-source Spatial Data Analytics and Geostatistics, DOI: /doi/10.5281/zenodo.13835444.
+
+The notebooks are mainly based on the demo notebooks from:
+Pyrcz, Michael J. (2021). PythonNumericalDemos: Educational Data Science Python Demonstrations Repository (0.0.1). Zenodo. https://doi.org/10.5281/zenodo.5564966
+
+The Jura dataset was taken from: Goovaerts P., 1997. Geostatistics for Natural Resources Evaluation. Oxford University Press.
