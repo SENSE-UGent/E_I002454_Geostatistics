@@ -1,0 +1,13 @@
+IPython
+ipywidgets
+numpy
+pandas
+matplotlib
+scipy
+sklearn
+geopandas
+rasterio
+shapely
+emagpy
+requests
+clhs
