@@ -1,0 +1,12 @@
+geostatspy
+numpy
+pandas
+matplotlib
+tqdm
+scipy
+seaborn
+ipywidgets
+IPython
+sklearn
+os
+functools
