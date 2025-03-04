@@ -6,8 +6,8 @@ import numpy as np
 is_within_ellipsoid_rework_2: 
     This function is used to determine if a point is within an ellipsoid. It is a rework of the original function
 
-inverse_distance_weighting:
-    This function is used to calculate the inverse distance weighting of a point based on the surrounding points
+in
+
 '''
 
 def is_within_ellipsoid_rework_2(points, center, search_radii):
