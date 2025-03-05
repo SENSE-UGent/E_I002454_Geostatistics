@@ -9,3 +9,4 @@ ipywidgets
 IPython
 sklearn
 functools
+math
