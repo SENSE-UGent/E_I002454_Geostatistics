@@ -1,3 +1,4 @@
+# setup file with utility functions for package installation and setup
 import subprocess
 import importlib
 import sys
