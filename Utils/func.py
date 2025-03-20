@@ -1,4 +1,7 @@
 import numpy as np
+import scipy.spatial as sp  # for fast nearest neighbor search
+from geostatspy.geostats import setup_rotmat, cova2, ksol_numpy
+
 
 #  This file contains the functions that are used in the main file
 
@@ -116,3 +119,239 @@ def inverse_distance_weighting(data=np.nan, grid_points=np.nan, data_x_col=np.na
     grid_points['idw' + str(power) + o_col] = p_list
     grid_points['idw' + str(power) + o_col].replace('--', np.nan, inplace=True)
     print('The function has finished. The predictions are in the grid_points DataFrame in the column idw' + str(power) + o_col)
+    return None
+
+def kb2d_locations_v2(df, xcol, ycol, vcol,
+                        tmin, tmax,
+                        df_loc, xcol_loc, ycol_loc,
+                        ndmin, ndmax, radius,
+                        ktype, skmean, vario):
+    """GSLIB's KB2D program (Deutsch and Journel, 1998) converted from the
+    original Fortran to Python by Michael Pyrcz, the University of Texas at
+    Austin (Jan, 2019).  Version for kriging at a set of spatial locations.
+    :param df: pandas DataFrame with the spatial data
+    :param xcol: name of the x coordinate column
+    :param ycol: name of the y coordinate column
+    :param vcol: name of the property column
+    :param tmin: property trimming limit
+    :param tmax: property trimming limit
+    :param df_loc: pandas DataFrame with the locations to krige
+    :param xcol_loc: name of the x coordinate column for locations to krige
+    :param ycol_loc: name of the y coordinate column for locations to krige
+    :param ndmin: minimum number of data points to use for kriging a block
+    :param ndmax: maximum number of data points to use for kriging a block
+    :param radius: maximum isotropic search radius
+    :param ktype:
+    :param skmean:
+    :param vario:
+    :return:
+    """
+# Constants
+    UNEST = -999.
+    EPSLON = 1.0e-10
+    VERSION = 2.907
+    first = True
+    PMX = 9999.0    
+    MAXSAM = ndmax + 1
+    MAXKD = MAXSAM + 1
+    MAXKRG = MAXKD * MAXKD
+    
+# load the variogram
+    nst = vario['nst']
+    cc = np.zeros(nst); aa = np.zeros(nst); it = np.zeros(nst)
+    ang = np.full(nst, np.nan); anis = np.full(nst, np.nan)
+    
+    c0 = vario['nug']; 
+    cc[0] = vario['cc1']; it[0] = vario['it1']; ang[0] = vario['azi1']
+    aa[0] = vario['hmaj1']; anis[0] = vario['hmin1']/vario['hmaj1']
+    if nst == 2:
+        cc[1] = vario['cc2']; it[1] = vario['it2']; ang[1] = vario['azi2']
+        aa[1] = vario['hmaj2']; anis[1] = vario['hmin2']/vario['hmaj2']
+    
+# Allocate the needed memory:   
+    xa = np.zeros(MAXSAM)
+    ya = np.zeros(MAXSAM)
+    vra = np.zeros(MAXSAM)
+    dist = np.zeros(MAXSAM)
+    nums = np.zeros(MAXSAM)
+    r = np.zeros(MAXKD)
+    rr = np.zeros(MAXKD)
+    s = np.zeros(MAXKD)
+    a = np.zeros(MAXKRG)
+    klist = np.zeros(len(df_loc))       # list of kriged estimates
+    vlist = np.zeros(len(df_loc))
+
+# Load the data
+    df_extract = df.loc[(df[vcol] >= tmin) & (df[vcol] <= tmax)]    # trim values outside tmin and tmax
+    nd = len(df_extract)
+    ndmax = min(ndmax,nd)
+    x = df_extract[xcol].values
+    y = df_extract[ycol].values
+    vr = df_extract[vcol].values
+    
+# Load the estimation loactions
+    nd_loc = len(df_loc)
+    x_loc = df_loc[xcol_loc].values # Fixed from original code
+    y_loc = df_loc[ycol_loc].values # Fixed from original code
+    # vr_loc = df_loc[vcol].values
+    
+# Make a KDTree for fast search of nearest neighbours   
+    dp = list((y[i], x[i]) for i in range(0,nd))
+    data_locs = np.column_stack((y,x))
+    tree = sp.cKDTree(data_locs, leafsize=16, compact_nodes=True, copy_data=False, balanced_tree=True)
+
+# Summary statistics for the data after trimming
+    avg = vr.mean()
+    stdev = vr.std()
+    ss = stdev**2.0
+    vrmin = vr.min()
+    vrmax = vr.max()
+
+# Initialize accumulators:
+    cbb  = 0.0
+    rad2 = radius*radius
+
+# Calculate Block Covariance. Check for point kriging.
+    rotmat, maxcov = setup_rotmat(c0,nst,it,cc,ang,PMX)
+    cov = cova2(0.0,0.0,0.0,0.0,nst,c0,PMX,cc,aa,it,ang,anis,rotmat,maxcov)
+# Keep this value to use for the unbiasedness constraint:
+    unbias = cov
+    cbb = cov
+    first  = False
+
+# MAIN LOOP OVER ALL THE BLOCKS IN THE GRID:
+    nk = 0
+    ak = 0.0
+    vk = 0.0
+    
+    for idata in range(len(df_loc)):
+        print('Working on location ' + str(idata))
+        xloc = x_loc[idata]
+        yloc = y_loc[idata] 
+        current_node = (yloc,xloc)
+        
+# Find the nearest samples within each octant: First initialize
+# the counter arrays:
+        na = -1   # accounting for 0 as first index
+        dist.fill(1.0e+20)
+        nums.fill(-1)
+        dist, nums = tree.query(current_node,ndmax) # use kd tree for fast nearest data search
+        # remove any data outside search radius
+        na = len(dist)
+        nums = nums[dist<radius]
+        dist = dist[dist<radius] 
+        na = len(dist)        
+
+# Is there enough samples?
+        if na + 1 < ndmin:   # accounting for min index of 0
+            est  = UNEST
+            estv = UNEST
+            print('UNEST for Data ' + str(idata) + ', at ' + str(xloc) + ',' + str(yloc))
+        else:
+
+# Put coordinates and values of neighborhood samples into xa,ya,vra:
+            for ia in range(0,na):
+                jj = int(nums[ia])
+                xa[ia]  = x[jj]
+                ya[ia]  = y[jj]
+                vra[ia] = vr[jj]
+                    
+# Handle the situation of only one sample:
+            if na == 0:  # accounting for min index of 0 - one sample case na = 0
+                cb1 = cova2(xa[0],ya[0],xa[0],ya[0],nst,c0,PMX,cc,aa,it,ang,anis,rotmat,maxcov)
+                xx  = xa[0] - xloc
+                yy  = ya[0] - yloc
+
+# Establish Right Hand Side Covariance:
+                cb = cova2(xx,yy,0.0,0.0,nst,c0,PMX,cc,aa,it,ang,anis,rotmat,maxcov)
+
+                if ktype == 0:
+                    s[0] = cb/cbb
+                    est  = s[0]*vra[0] + (1.0-s[0])*skmean
+                    estv = cbb - s[0] * cb
+                else:
+                    est  = vra[0]
+                    estv = cbb - 2.0*cb + cb1
+            else:
+
+# Solve the Kriging System with more than one sample:
+                neq = na + ktype # accounting for first index of 0
+#                print('NEQ' + str(neq))
+                nn  = (neq + 1)*neq/2
+
+# Set up kriging matrices:
+                iin=-1 # accounting for first index of 0
+                for j in range(0,na):
+
+# Establish Left Hand Side Covariance Matrix:
+                    for i in range(0,na):  # was j - want full matrix                    
+                        iin = iin + 1
+                        a[iin] = cova2(xa[i],ya[i],xa[j],ya[j],nst,c0,PMX,cc,aa,it,ang,anis,rotmat,maxcov) 
+                    if ktype == 1:
+                        iin = iin + 1
+                        a[iin] = unbias
+                    xx = xa[j] - xloc
+                    yy = ya[j] - yloc
+
+# Establish Right Hand Side Covariance:
+                    cb = cova2(xx,yy,0.0,0.0,nst,c0,PMX,cc,aa,it,ang,anis,rotmat,maxcov)
+                    r[j]  = cb
+                    rr[j] = r[j]
+
+# Set the unbiasedness constraint:
+                if ktype == 1:
+                    for i in range(0,na):
+                        iin = iin + 1
+                        a[iin] = unbias
+                    iin      = iin + 1
+                    a[iin]   = 0.0
+                    r[neq-1]  = unbias
+                    rr[neq-1] = r[neq]
+
+# Solve the Kriging System:
+#                print('NDB' + str(ndb))
+#                print('NEQ' + str(neq) + ' Left' + str(a) + ' Right' + str(r))
+#                stop
+                s = ksol_numpy(neq,a,r)
+                ising = 0 # need to figure this out
+#                print('weights' + str(s))
+#                stop
+                
+            
+# Write a warning if the matrix is singular:
+                if ising != 0:
+                    print('WARNING KB2D: singular matrix')
+                    print('              for block' + str(ix) + ',' + str(iy)+ ' ')
+                    est  = UNEST
+                    estv = UNEST
+                else:
+
+# Compute the estimate and the kriging variance:
+                    est  = 0.0
+                    estv = cbb
+                    sumw = 0.0
+                    if ktype == 1: 
+                        estv = estv - (s[na])*unbias
+                    for i in range(0,na):                          
+                        sumw = sumw + s[i]
+                        est  = est  + s[i]*vra[i]
+                        estv = estv - s[i]*rr[i]
+                    if ktype == 0: 
+                        est = est + (1.0-sumw)*skmean
+        klist[idata] = est
+        vlist[idata] = estv
+        if est > UNEST:
+            nk = nk + 1
+            ak = ak + est
+            vk = vk + est*est
+
+# END OF MAIN LOOP OVER ALL THE BLOCKS:
+
+    if nk >= 1:
+        ak = ak / float(nk)
+        vk = vk/float(nk) - ak*ak
+        print('  Estimated   ' + str(nk) + ' blocks ')
+        print('      average   ' + str(ak) + '  variance  ' + str(vk))
+
+    return klist, vlist
+    
