@@ -1,6 +1,8 @@
 import numpy as np
 import scipy.spatial as sp  # for fast nearest neighbor search
 from geostatspy.geostats import setup_rotmat, cova2, ksol_numpy
+import matplotlib.pyplot as plt
+from matplotlib.ticker import AutoMinorLocator
 
 
 #  This file contains the functions that are used in the main file
@@ -354,4 +356,13 @@ def kb2d_locations_v2(df, xcol, ycol, vcol,
         print('      average   ' + str(ak) + '  variance  ' + str(vk))
 
     return klist, vlist
-    
+
+def add_grid():
+    plt.gca().grid(True, which='major',linewidth = 1.0); plt.gca().grid(True, which='minor',linewidth = 0.2) # add y grids
+    plt.gca().tick_params(which='major',length=7); plt.gca().tick_params(which='minor', length=4)
+    plt.gca().xaxis.set_minor_locator(AutoMinorLocator()); plt.gca().yaxis.set_minor_locator(AutoMinorLocator()) # turn on minor ticks 
+
+def add_grid2(sub_plot):
+    sub_plot.grid(True, which='major', linewidth = 1.0); sub_plot.grid(True, which='minor',linewidth = 0.2) # add y grids
+    sub_plot.tick_params(which='major', length=7); sub_plot.tick_params(which='minor', length=4)
+    sub_plot.xaxis.set_minor_locator(AutoMinorLocator()); sub_plot.yaxis.set_minor_locator(AutoMinorLocator()) # turn on minor ticks      
