@@ -3,6 +3,7 @@ import scipy.spatial as sp  # for fast nearest neighbor search
 from geostatspy.geostats import setup_rotmat, cova2, ksol_numpy
 import matplotlib.pyplot as plt
 from matplotlib.ticker import AutoMinorLocator
+import xml.etree.ElementTree as ET
 
 
 #  This file contains the functions that are used in the main file
@@ -16,6 +17,24 @@ inverse_distance_weighting:
 '''
 
 def is_within_ellipsoid_rework_2(points, center, search_radii):
+    """
+    Check if points are within an ellipsoid defined by the center and search radii. Written by Pablo De Weerdt.
+    points: np.ndarray
+        Array of points to check, shape (n_points, n_dimensions).
+    center: tuple
+        Center of the ellipsoid, shape (n_dimensions,).
+    search_radii: tuple
+        Radii of the ellipsoid, shape (n_dimensions,).
+    Returns:
+        sorted_indices: np.ndarray
+            Indices of the points sorted by distance to the center of the ellipsoid.
+        closest_distances: np.ndarray
+            Distances of the points to the center of the ellipsoid.
+        sorted_points: np.ndarray
+            Points sorted by distance to the center of the ellipsoid.
+        within_ellipsoid_mask: np.ndarray
+            Boolean mask indicating which points are within the ellipsoid.
+    """
     if points.shape[1] == 3:
         x, y, z = points[:, 0], points[:, 1], points[:, 2]
         x_c, y_c, z_c = center
@@ -45,7 +64,25 @@ def is_within_ellipsoid_rework_2(points, center, search_radii):
 def inverse_distance_weighting(data=np.nan, grid_points=np.nan, data_x_col=np.nan, data_y_col=np.nan, data_z_col=np.nan,
                                   grid_x_col=np.nan, grid_y_col=np.nan, grid_z_col=np.nan, o_col=np.nan, 
                                   power=np.nan, max_points=np.nan, min_points=np.nan, search_radii=np.nan):
-
+    """
+    Inverse distance weighting function. This function is used to calculate the inverse distance weighting of a point based on the surrounding points.
+    Written by Pablo De Weerdt.
+    :param data: pandas DataFrame with the spatial data
+    :param grid_points: pandas DataFrame with the locations for idw
+    :param data_x_col: name of the x coordinate column
+    :param data_y_col: name of the y coordinate column
+    :param data_z_col: name of the z coordinate column
+    :param grid_x_col: name of the x coordinate column for locations for idw
+    :param grid_y_col: name of the y coordinate column for locations for idw
+    :param grid_z_col: name of the z coordinate column for locations for idw
+    :param o_col: name of the property column
+    :param power: power of the inverse distance weighting
+    :param max_points: maximum number of points to use for idw 
+    :param min_points: minimum number of points to use for idw
+    :param search_radii: maximum isotropic search radius
+    :return: None
+    grid_points['idw' + str(power) + o_col]: pandas DataFrame with the idw values
+    """
     data = data.dropna(subset=[o_col])
     
     if data_z_col in data.columns and grid_z_col in grid_points.columns:
@@ -130,7 +167,7 @@ def kb2d_locations_v2(df, xcol, ycol, vcol,
                         ktype, skmean, vario):
     """GSLIB's KB2D program (Deutsch and Journel, 1998) converted from the
     original Fortran to Python by Michael Pyrcz, the University of Texas at
-    Austin (Jan, 2019).  Version for kriging at a set of spatial locations.
+    Austin (Jan, 2019).  Version for kriging at a set of spatial locations. Modified by Pablo De Weerdt.
     :param df: pandas DataFrame with the spatial data
     :param xcol: name of the x coordinate column
     :param ycol: name of the y coordinate column
@@ -365,4 +402,47 @@ def add_grid():
 def add_grid2(sub_plot):
     sub_plot.grid(True, which='major', linewidth = 1.0); sub_plot.grid(True, which='minor',linewidth = 0.2) # add y grids
     sub_plot.tick_params(which='major', length=7); sub_plot.tick_params(which='minor', length=4)
-    sub_plot.xaxis.set_minor_locator(AutoMinorLocator()); sub_plot.yaxis.set_minor_locator(AutoMinorLocator()) # turn on minor ticks      
+    sub_plot.xaxis.set_minor_locator(AutoMinorLocator()); sub_plot.yaxis.set_minor_locator(AutoMinorLocator()) # turn on minor ticks
+
+def read_mod_file(file_path):
+    """
+    Reads a .mod file containing variogram parameters and returns the output in the same format as GSLIB.make_variogram.
+    Conceptualised by Pablo De Weerdt.
+    :param file_path: Path to the .mod file
+    :return: Dictionary containing variogram parameters
+    """
+    tree = ET.parse(file_path)
+    root = tree.getroot()
+
+    variogram = {
+        'nug': float(root.attrib['nugget']),
+        'nst': int(root.attrib['structures_count']),
+        'cc1': 0,
+        'it1': 1,
+        'azi1': 0,
+        'hmaj1': 0,
+        'hmin1': 0,
+        'cc2': 0,
+        'it2': 1,
+        'azi2': 0,
+        'hmaj2': 0,
+        'hmin2': 0
+    }
+
+    for i in range(1, variogram['nst'] + 1):
+        structure = root.find(f'structure_{i}')
+        if structure is not None:
+            variogram[f'cc{i}'] = float(structure.attrib['contribution'])
+            variogram[f'it{i}'] = 1 if structure.attrib['type'] == 'Exponential' else 2  # Assuming 1=Exponential, 2=Spherical
+
+            ranges = structure.find('ranges')
+            if ranges is not None:
+                variogram[f'hmaj{i}'] = float(ranges.attrib['max'])
+                variogram[f'hmin{i}'] = float(ranges.attrib['medium'])
+
+            angles = structure.find('angles')
+            if angles is not None:
+                variogram[f'azi{i}'] = float(angles.attrib['x'])
+
+    return variogram
+
