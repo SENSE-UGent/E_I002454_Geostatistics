@@ -1,4 +1,4 @@
-geostatspy
+geostatspy==0.0.72
 numpy
 pandas
 matplotlib
