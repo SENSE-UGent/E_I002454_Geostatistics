@@ -4,3 +4,5 @@
 __pycache__/
 *.py[cod]
 Notebooks/P7_Krig_par.ipynb
+# ignore .vscode/ folder
+.vscode/
